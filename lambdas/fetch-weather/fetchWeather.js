@@ -4,8 +4,9 @@ const AWS = require('aws-sdk');
 const uuid = require('uuid');
 const documentClient = new AWS.DynamoDB.DocumentClient();
 
-const forecastService = new AWS.Service({
+const __TESTING__ = false;
 
+const forecastService = new AWS.Service({
     endpoint: 'http://dataservice.accuweather.com',
     convertResponseTypes: false,
 
@@ -85,55 +86,87 @@ function makeHourlyForecast(locationID, locationName, requestTime, forecast) {
     });
 }
 
-function saveHourlyForecast(table, hour, callback) {
-	const params = {
-		Item: hour,
-		TableName: table
-	};
-	documentClient.put(params, function(err, data) {
-        if (err) {
-            console.error('Error saving forecast:', err);
-        }
-	});
-}
-
-function hour(time) {
-    console.log('hour = ' + time.substring(11,13));
-    return time.substring(11,13);
-}
-
-function getForecastForLocation(location, requestTime) {
-    const { locationID, locationName, hourly } = location;
-
-    const shouldFetchLocation = location.hourly || forecastTimes.includes(hour(requestTime));
-    if (!shouldFetchLocation) {
-        console.log('Not fetching location for ' + locationName + ' this hour.');
-        return;
-    }
-
-    forecastService.getForecast({
-        apiKey: process.env.WS_API_KEY,
-        locationID: location.locationID,
-        details: 'true',
-        metric: 'true',
-    }, (err, data) => {
-
-        if (err) {
-            console.error('>>> operation error:', err);
+function saveHourlyForecast(hour) {
+    return new Promise((resolve, reject) => {
+        if (__TESTING__) {
+            // Log results but don't persist to db.
+            console.log(JSON.stringify(hour));
+            resolve();
             return;
         }
 
-        const dbTable = process.env.DB_TABLE_NAME;
-        const forecast = getForecastFromResponse(data);
-        const hourlyForecast = makeHourlyForecast(locationID, locationName, requestTime, forecast);
-        hourlyForecast.forEach(hour => {
-            //console.log(JSON.stringify(hour));
-            saveHourlyForecast(dbTable, hour);
+        const params = {
+            Item: hour,
+            TableName: process.env.DB_TABLE_NAME
+        };
+        documentClient.put(params, (err, data) => {
+            if (err) {
+                console.error('Unable to save forecast: ', err);
+                reject('Unable to save forecast');
+                return;
+            }
+            resolve();
         });
+    });
+}
+
+function hour(time) {
+    return time.substring(11,13);
+}
+
+function getForecastForLocation(location) {
+    return new Promise((resolve, reject) => {
+        forecastService.getForecast({
+            apiKey: process.env.WS_API_KEY,
+            locationID: location.locationID,
+            details: 'true',
+            metric: 'true',
+        }, (err, data) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            const forecast = getForecastFromResponse(data);
+            resolve(forecast);
+        });
+    });
+}
+
+function updateForecastForLocation(location, requestTime) {
+    return new Promise((resolve, reject) => {
+        const { locationID, locationName, hourly } = location;
+
+        const shouldFetchLocation = location.hourly || forecastTimes.includes(hour(requestTime));
+        if (!shouldFetchLocation) {
+            console.log('Not fetching location for ' + locationName + ' this hour.');
+            resolve();
+            return;
+        }
+
+        getForecastForLocation(location)
+          .then(forecast => {
+              const hourlyForecast = makeHourlyForecast(locationID, locationName, requestTime, forecast);
+              const promises = hourlyForecast.map(hour => {
+                  saveHourlyForecast(hour);
+              });
+
+              // Don't fail even if we are unable to save all of the data.
+              Promise.all(promises).then(resolve).catch(resolve);
+          })
+          .catch(err => {
+              console.error('Unable to get AccuWeather forecast: ', err);
+              reject('Unable to get AccuWeather forecast');
+          });
     });
 }
 
 exports.handler = () => {
     const requestTime = new Date().toISOString();
-    locations.forEach(location => getForecastForLocation(location, requestTime));
+    const promises = locations.map(location =>
+        updateForecastForLocation(location, requestTime)
+    );
+
+    Promise.all(promises)
+        .then(() => console.log('Success'))
+        .catch(err => console.error(err));
 };

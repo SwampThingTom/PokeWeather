@@ -124,41 +124,45 @@ function pogoWeather(accuWeather) {
     return pogoWeather.text;
 }
 
-function getForecast(table, locationID, requestTime, callback) {
-    const location = locations[locationID];
-    console.log('Requesting forecast for: ' + location.locationName + '\n' + requestTime);
-	  const params = {
-  		TableName: table,
-  		FilterExpression: 'locationID = :locationID and begins_with(requestTime, :requestTime)',
-  		ExpressionAttributeValues: { ':locationID': locationID, ':requestTime': requestTime }
-  	};
-  	documentClient.scan(params, function(err, data) {
-          if (err) {
-              console.error('Error getting forecast:', err);
-              return;
-          }
-          const forecast = data.Items;
-          if (forecast.length == 0) {
-              console.error('No items in forecast');
-              return;
-          }
-          forecast.sort(function(a, b) {
-              const dateA = new Date(a.dateTime);
-              const dateB = new Date(b.dateTime);
-              if (dateA < dateB) return -1;
-              if (dateA > dateB) return 1;
-              return 0;
-          });
-          console.log(forecast);
-          const fetchTime = forecast[0].requestTime;
-          const pogoForecast = forecast.slice(0,8).map(accuWeather => {
-              return {
-                  hour: accuWeather.dateTime.slice(11,13),
-                  weather: pogoWeather(accuWeather)
-              };
-          });
-          callback(location, fetchTime, pogoForecast);
-  	});
+function getForecast(table, locationID, requestTime) {
+    return new Promise(resolve, reject) {
+        const location = locations[locationID];
+        console.log('Requesting forecast for: ' + location.locationName + '\n' + requestTime);
+        const params = {
+            TableName: table,
+            FilterExpression: 'locationID = :locationID and begins_with(requestTime, :requestTime)',
+            ExpressionAttributeValues: { ':locationID': locationID, ':requestTime': requestTime }
+        };
+        documentClient.scan(params, (err, data) => {
+            if (err) {
+                console.error('Error getting forecast:', err);
+                reject('Unable to get forecast');
+                return;
+            }
+            const forecast = data.Items;
+            if (forecast.length == 0) {
+                console.error('No items in forecast');
+                reject('No items in forecast');
+                return;
+            }
+            forecast.sort((a, b) => {
+                const dateA = new Date(a.dateTime);
+                const dateB = new Date(b.dateTime);
+                if (dateA < dateB) return -1;
+                if (dateA > dateB) return 1;
+                return 0;
+            });
+            console.log(forecast);
+            const fetchTime = forecast[0].requestTime;
+            const pogoForecast = forecast.slice(0,8).map(accuWeather => {
+                return {
+                    hour: accuWeather.dateTime.slice(11,13),
+                    weather: pogoWeather(accuWeather)
+                };
+            });
+            resolve(location, fetchTime, pogoForecast);
+        });
+    }
 }
 
 function postToDiscord(message) {
@@ -211,10 +215,11 @@ exports.handler = () => {
     //const requestTime = '2019-02-10T06';
 
     Object.keys(locations).forEach(locationID => {
-        getForecast(dbTable, locationID, requestTime, (location, fetchTime, pogoForecast) => {
-            const message = weatherForecastText(location, fetchTime, pogoForecast);
-            console.log(message);
-            postToDiscord(message);
-        });
+        getForecast(dbTable, locationID, requestTime)
+            .then((location, fetchTime, pogoForecast) => {
+                const message = weatherForecastText(location, fetchTime, pogoForecast);
+                console.log(message);
+                postToDiscord(message);
+            })
     });
 };
