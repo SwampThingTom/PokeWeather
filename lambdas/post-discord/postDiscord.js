@@ -125,7 +125,7 @@ function pogoWeather(accuWeather) {
 }
 
 function getForecast(table, locationID, requestTime) {
-    return new Promise(resolve, reject) {
+    return new Promise((resolve, reject) => {
         const location = locations[locationID];
         console.log('Requesting forecast for: ' + location.locationName + '\n' + requestTime);
         const params = {
@@ -162,7 +162,7 @@ function getForecast(table, locationID, requestTime) {
             });
             resolve(location, fetchTime, pogoForecast);
         });
-    }
+    });
 }
 
 function postToDiscord(message) {
