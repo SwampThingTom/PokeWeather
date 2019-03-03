@@ -105,6 +105,7 @@ function saveHourlyForecast(hour) {
                 reject('Unable to save forecast');
                 return;
             }
+            console.log(JSON.stringify(hour));
             resolve();
         });
     });
@@ -160,13 +161,13 @@ function updateForecastForLocation(location, requestTime) {
     });
 }
 
-exports.handler = () => {
+exports.handler = function(event, context, callback) {
     const requestTime = new Date().toISOString();
     const promises = locations.map(location =>
         updateForecastForLocation(location, requestTime)
     );
 
     Promise.all(promises)
-        .then(() => console.log('Success'))
-        .catch(err => console.error(err));
+        .then(() => callback(null, 'Success'))
+        .catch(err => callback(err));
 };
