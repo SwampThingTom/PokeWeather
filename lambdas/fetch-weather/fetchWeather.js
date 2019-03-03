@@ -51,7 +51,7 @@ const forecastService = new AWS.Service({
 forecastService.isGlobalEndpoint = true;
 
 // UTC pull times for actual forecast data.
-const forecastTimes = [ '06', '14', '22' ];
+const forecastTimes = [ '08', '16', '24' ];
 
 const locations = [
     { locationID: '2110989', locationName: 'Herndon (Floris)', hourly: true },
