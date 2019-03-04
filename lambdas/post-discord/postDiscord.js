@@ -1,6 +1,7 @@
 'use strict';
 
 const AWS = require('aws-sdk');
+const uuid = require('uuid');
 const documentClient = new AWS.DynamoDB.DocumentClient();
 
 const discordService = new AWS.Service({
@@ -145,16 +146,19 @@ function getForecast(table, locationID, requestTime) {
                 reject('No items in forecast');
                 return;
             }
-            forecast.sort((a, b) => {
+            const uniqueForecast = forecast.filter((value, index, array) => {
+                return array.findIndex(element => element.dateTime == value.dateTime) == index;
+            });
+            uniqueForecast.sort((a, b) => {
                 const dateA = new Date(a.dateTime);
                 const dateB = new Date(b.dateTime);
                 if (dateA < dateB) return -1;
                 if (dateA > dateB) return 1;
                 return 0;
             });
-            console.log(forecast);
-            const fetchTime = forecast[0].requestTime;
-            const pogoForecast = forecast.slice(0,8).map(accuWeather => {
+            console.log(uniqueForecast);
+            const fetchTime = uniqueForecast[0].requestTime;
+            const pogoForecast = uniqueForecast.slice(0,8).map(accuWeather => {
                 return {
                     hour: accuWeather.dateTime.slice(11,13),
                     weather: pogoWeather(accuWeather)
@@ -209,7 +213,7 @@ function forecastText(forecast) {
     }, '').trim();
 }
 
-exports.handler = () => {
+exports.handler = function(event, context, callback) {
     const dbTable = process.env.DB_TABLE_NAME;
     const requestTime = new Date().toISOString().slice(0,13);
     //const requestTime = '2019-02-10T06';
@@ -220,6 +224,7 @@ exports.handler = () => {
                 const message = weatherForecastText(location, fetchTime, pogoForecast);
                 console.log(message);
                 postToDiscord(message);
+                callback(null, "Success");
             })
     });
 };
