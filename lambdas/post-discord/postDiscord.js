@@ -151,6 +151,13 @@ function getForecast(table, locationID, requestTime, callback) {
             console.error('No items in forecast');
             return;
         }
+        forecast.sort((a, b) => {
+            const dateA = new Date(a.dateTime);
+            const dateB = new Date(b.dateTime);
+            if (dateA < dateB) return -1;
+            if (dateA > dateB) return 1;
+            return 0;
+        });
         console.log(forecast);
         const fetchTime = forecast[0].requestTime;
         const pogoForecast = forecast.slice(0,8).map(accuWeather => {
