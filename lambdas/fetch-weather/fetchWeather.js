@@ -1,7 +1,6 @@
 'use strict';
 
 const AWS = require('aws-sdk');
-const uuid = require('uuid');
 const documentClient = new AWS.DynamoDB.DocumentClient();
 
 const __TESTING__ = false;
@@ -58,6 +57,11 @@ const locations = [
     { locationID: '341249',  locationName: 'Reston (RTC)' },
 ];
 
+function itemKey(locationID, requestTime) {
+    const requestDateHour = requestTime.slice(0,13);
+    return `${locationID}-${requestDateHour}`;
+}
+
 function getForecastFromResponse(response) {
     const keys = Object.keys(response).filter(key => {
         if (key === null || key === undefined) return false;
@@ -73,15 +77,25 @@ function getForecastFromResponse(response) {
 function makeHourlyForecast(locationID, locationName, requestTime, forecast) {
     return forecast.map(hourly => {
         return {
-            id: uuid.v1(),
-            locationID: locationID,
+            locationRequestTime: itemKey(locationID, requestTime),
+            forecastHour: hour(hourly.DateTime),
             locationName: locationName,
             requestTime: requestTime,
             dateTime: hourly.DateTime,
             weatherIcon: hourly.WeatherIcon,
+            iconPhrase: hourly.IconPhrase,
             isDaylight: hourly.IsDaylight,
             windSpeed: hourly.Wind.Speed.Value,
+            windSpeedUnit: hourly.Wind.Speed.Unit,
             windGust: hourly.WindGust.Speed.Value,
+            windGustUnit: hourly.Wind.Speed.Unit,
+            temperature: hourly.Temperature.Value,
+            temperatureUnit: hourly.Temperature.Unit,
+            visibilityValue: hourly.Visibility.Value,
+            visibilityUnit: hourly.Visibility.Unit,
+            precipitationProbability: hourly.PrecipitationProbability,
+            rainProbability: hourly.RainProbability,
+            snowProbability: hourly.SnowProbability,
         }
     });
 }

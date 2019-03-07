@@ -125,39 +125,37 @@ function pogoWeather(accuWeather) {
     return pogoWeather.text;
 }
 
+function itemKey(locationID, requestTime) {
+    const requestDateHour = requestTime.slice(0,13);
+    return `${locationID}-${requestDateHour}`;
+}
+
 function getForecast(table, locationID, requestTime, callback) {
     const location = locations[locationID];
     console.log('Requesting forecast for: ' + location.locationName + '\n' + requestTime);
-	const params = {
-		TableName: table,
-		FilterExpression: 'locationID = :locationID and begins_with(requestTime, :requestTime)',
-		ExpressionAttributeValues: { ':locationID': locationID, ':requestTime': requestTime }
-	};
-	documentClient.scan(params, function(err, data) {
+    const params = {
+      TableName: table,
+      KeyConditionExpression: 'locationRequestTime = :locationRequestTime',
+      ExpressionAttributeValues: { ':locationRequestTime': itemKey(locationID, requestTime) }
+    };
+    documentClient.query(params, function(err, data) {
         if (err) {
             console.error('Error getting forecast:', err);
             return;
+        }
+        if (data.LastEvaluatedKey) {
+            console.log('LastEvaluatedKey present. Not all data was returned.')
         }
         const forecast = data.Items;
         if (forecast.length == 0) {
             console.error('No items in forecast');
             return;
         }
-        const uniqueForecast = forecast.filter((value, index, array) => {
-            return array.findIndex(element => element.dateTime == value.dateTime) == index;
-        });
-        uniqueForecast.sort((a, b) => {
-            const dateA = new Date(a.dateTime);
-            const dateB = new Date(b.dateTime);
-            if (dateA < dateB) return -1;
-            if (dateA > dateB) return 1;
-            return 0;
-        });
-        console.log(uniqueForecast);
-        const fetchTime = uniqueForecast[0].requestTime;
-        const pogoForecast = uniqueForecast.slice(0,8).map(accuWeather => {
+        console.log(forecast);
+        const fetchTime = forecast[0].requestTime;
+        const pogoForecast = forecast.slice(0,8).map(accuWeather => {
             return {
-                hour: accuWeather.dateTime.slice(11,13),
+                hour: accuWeather.forecastHour,
                 weather: pogoWeather(accuWeather)
             };
         });
