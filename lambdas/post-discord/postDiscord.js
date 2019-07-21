@@ -74,44 +74,49 @@ const pogoWeatherIcons = {
 };
 
 const weatherMap = {
-     1: { text: "Clear",         wind: true },
-     2: { text: "Clear",         wind: true },
-     3: { text: "Partly Cloudy", wind: true },
-     4: { text: "Partly Cloudy", wind: true },
-     5: { text: "Cloudy",        wind: true },
-     6: { text: "Cloudy",        wind: true },
-     7: { text: "Cloudy",        wind: true },
-     8: { text: "Cloudy",        wind: true },
-    11: { text: "Fog",           wind: false },
-    12: { text: "Rain",          wind: false },
-    13: { text: "Cloudy",        wind: false },
-    14: { text: "Partly Cloudy", wind: false },
-    15: { text: "Rain",          wind: false },
-    16: { text: "Cloudy",        wind: false },
-    17: { text: "Partly Cloudy", wind: false },
-    18: { text: "Rain",          wind: false },
-    19: { text: "Snow",          wind: false },
-    20: { text: "Cloudy",        wind: false },
-    21: { text: "Partly Cloudy", wind: false },
-    22: { text: "Snow",          wind: false },
-    23: { text: "Cloudy",        wind: false },
-    24: { text: "Snow",          wind: false },
-    25: { text: "Rain",          wind: false },
-    26: { text: "Rain",          wind: false },
-    29: { text: "Snow",          wind: false },
-    32: { text: "Windy",         wind: false },
-    33: { text: "Clear",         wind: true },
-    34: { text: "Clear",         wind: true },
-    35: { text: "Partly Cloudy", wind: true },
-    36: { text: "Partly Cloudy", wind: true },
-    37: { text: "Cloudy",        wind: true },
-    38: { text: "Cloudy",        wind: true },
-    39: { text: "Partly Cloudy", wind: false },
-    40: { text: "Cloudy",        wind: false },
-    41: { text: "Partly Cloudy", wind: false },
-    42: { text: "Cloudy",        wind: false },
-    43: { text: "Cloudy",        wind: false },
-    44: { text: "Cloudy",        wind: false },
+     1: { text: "Clear",         windyable: true },
+     2: { text: "Clear",         windyable: true },
+     3: { text: "Partly Cloudy", windyable: true },
+     4: { text: "Partly Cloudy", windyable: true },
+     5: { text: "Cloudy",        windyable: true },
+     6: { text: "Cloudy",        windyable: true },
+     7: { text: "Cloudy",        windyable: true },
+     8: { text: "Cloudy",        windyable: true },
+    11: { text: "Fog",           windyable: false },
+    12: { text: "Rain",          windyable: false },
+    13: { text: "Cloudy",        windyable: true },
+    14: { text: "Partly Cloudy", windyable: true },
+    15: { text: "Rain",          windyable: false },
+    16: { text: "Cloudy",        windyable: true },
+    17: { text: "Partly Cloudy", windyable: true },
+    18: { text: "Rain",          windyable: false },
+    19: { text: "Snow",          windyable: false },
+    20: { text: "Cloudy",        windyable: true },
+    21: { text: "Partly Cloudy", windyable: true },
+    22: { text: "Snow",          windyable: false },
+    23: { text: "Cloudy",        windyable: true },
+    24: { text: "Snow",          windyable: false },
+    25: { text: "Rain",          windyable: false },
+    26: { text: "Rain",          windyable: false },
+    29: { text: "Snow",          windyable: false },
+    32: { text: "Windy",         windyable: false },
+    33: { text: "Clear",         windyable: true },
+    34: { text: "Clear",         windyable: true },
+    35: { text: "Partly Cloudy", windyable: true },
+    36: { text: "Partly Cloudy", windyable: true },
+    37: { text: "Cloudy",        windyable: true },
+    38: { text: "Cloudy",        windyable: true },
+    39: { text: "Partly Cloudy", windyable: true },
+    40: { text: "Cloudy",        windyable: true },
+    41: { text: "Partly Cloudy", windyable: true },
+    42: { text: "Cloudy",        windyable: true },
+    43: { text: "Cloudy",        windyable: true },
+    44: { text: "Cloudy",        windyable: true },
+};
+
+const thresholds = {
+  windSpeed: 20,
+  windGust: 29.5
 };
 
 function pogoWeather(accuWeather) {
@@ -119,7 +124,8 @@ function pogoWeather(accuWeather) {
     if (!pogoWeather) {
         return "Unknown";
     }
-    if (accuWeather.windSpeed + accuWeather.windGust > 55) {
+    const windy = accuWeather.windSpeed > thresholds.windSpeed && accuWeather.windGust > thresholds.windGust;
+    if (pogoWeather.windyable && windy) {
         return "Windy";
     }
     return pogoWeather.text;
